@@ -66,18 +66,17 @@ void ParticleFilter::prediction(double delta_t, double std_pos[], double velocit
 	#pragma omp parallel for
 	for (int i = 0; i < this->num_particles; ++i){
 	    if (fabs(yaw_rate) > 0.000000001) {
-	        this->particles[i].x = this->particles[i].x + velocity/yaw_rate * ( sin (this->particles[i].theta + yaw_rate*delta_t) - sin(this->particles[i].theta));
-	        this->particles[i].y = this->particles[i].y + velocity/yaw_rate * ( cos(this->particles[i].theta) - cos(this->particles[i].theta+yaw_rate*delta_t) );
-	        this->particles[i].theta = this->particles[i].theta + yaw_rate*delta_t;
+	        this->particles[i].x += velocity/yaw_rate * ( sin (this->particles[i].theta + yaw_rate*delta_t) - sin(this->particles[i].theta));
+	        this->particles[i].y += + velocity/yaw_rate * ( cos(this->particles[i].theta) - cos(this->particles[i].theta+yaw_rate*delta_t) );
+	        this->particles[i].theta += + yaw_rate*delta_t;
 	    }
 	    else {
-	        this->particles[i].x = this->particles[i].x + velocity*delta_t*cos(this->particles[i].theta);
-	        this->particles[i].y = this->particles[i].y + velocity*delta_t*sin(this->particles[i].theta);
-	        this->particles[i].theta = this->particles[i].theta;
+	        this->particles[i].x += velocity*delta_t*cos(this->particles[i].theta);
+	        this->particles[i].y += velocity*delta_t*sin(this->particles[i].theta);
 	    }
-	    this->particles[i].x = this->particles[i].x + dist_x(gen);
-	    this->particles[i].y = this->particles[i].y + dist_y(gen);
-	    this->particles[i].theta = this->particles[i].theta + dist_theta(gen);
+	    this->particles[i].x += dist_x(gen);
+	    this->particles[i].y += dist_y(gen);
+	    this->particles[i].theta += dist_theta(gen);
 	}
 
 }
@@ -142,6 +141,7 @@ void ParticleFilter::updateWeights(double sensor_range, double std_landmark[],
 	double sig_x = std_landmark[0];
 	double sig_y = std_landmark[1];
 	double gauss_norm= (1/(2 * M_PI * sig_x * sig_y));
+	sensor_range = sensor_range*sensor_range;
 	#pragma omp parallel for
 	for (int i = 0; i < this->num_particles; ++i){
 		double mu_x, mu_y, x_obs, y_obs, exponent, multiplier, weight;
@@ -152,7 +152,7 @@ void ParticleFilter::updateWeights(double sensor_range, double std_landmark[],
 		double obs_dist, sense_dist, min_dist;
 		vector<Map::single_landmark_s> close_landmarks;
 		for (int k = 0; k < map_landmarks.landmark_list.size(); ++k){
-			sense_dist = sqrt((map_landmarks.landmark_list[k].x_f - this->particles[i].x)*(map_landmarks.landmark_list[k].x_f - this->particles[i].x)+(map_landmarks.landmark_list[k].y_f - this->particles[i].y)*(map_landmarks.landmark_list[k].y_f - this->particles[i].y));
+			sense_dist = ((map_landmarks.landmark_list[k].x_f - this->particles[i].x)*(map_landmarks.landmark_list[k].x_f - this->particles[i].x)+(map_landmarks.landmark_list[k].y_f - this->particles[i].y)*(map_landmarks.landmark_list[k].y_f - this->particles[i].y));
 			if (sense_dist<sensor_range){
 				close_landmarks.push_back(map_landmarks.landmark_list[k]);
 			}
@@ -164,7 +164,7 @@ void ParticleFilter::updateWeights(double sensor_range, double std_landmark[],
 			matching_index = 0;
 			min_dist = numeric_limits<double>::max();
 			for (int k = 0; k < close_landmarks.size(); ++k){
-				obs_dist = sqrt((close_landmarks[k].x_f - global_observation.x_f)*(close_landmarks[k].x_f - global_observation.x_f)+(close_landmarks[k].y_f - global_observation.y_f)*(close_landmarks[k].y_f - global_observation.y_f));
+				obs_dist = ((close_landmarks[k].x_f - global_observation.x_f)*(close_landmarks[k].x_f - global_observation.x_f)+(close_landmarks[k].y_f - global_observation.y_f)*(close_landmarks[k].y_f - global_observation.y_f));
 				if (obs_dist<min_dist){
 					min_dist = obs_dist;
 					matching_index = k;
